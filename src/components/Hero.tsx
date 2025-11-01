@@ -7,6 +7,7 @@ export function Hero() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 
   useEffect(() => {
@@ -87,21 +88,26 @@ export function Hero() {
         loop
         muted
         playsInline
+        preload="metadata"
+        controls={false}
+        webkit-playsinline="true"
       />
 
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-emerald-950/20 z-10"></div>
       
-      {/* Interactive cursor follower */}
-      <div 
-        className="fixed w-96 h-96 pointer-events-none z-0 opacity-30"
-        style={{
-          left: mousePosition.x - 192,
-          top: mousePosition.y - 192,
-          background: 'radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%)',
-          transition: 'all 0.1s ease-out'
-        }}
-      />
+      {/* Interactive cursor follower - Desktop only */}
+      {!isMobile && (
+        <div 
+          className="fixed w-96 h-96 pointer-events-none z-0 opacity-30"
+          style={{
+            left: mousePosition.x - 192,
+            top: mousePosition.y - 192,
+            background: 'radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%)',
+            transition: 'all 0.1s ease-out'
+          }}
+        />
+      )}
       
       {/* Grid pattern overlay */}
       <div className="absolute inset-0 opacity-20">

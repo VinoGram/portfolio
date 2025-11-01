@@ -42,69 +42,50 @@ export function About() {
     
     playSnapSound();
     
-    // Get all visible elements
+    // Get ALL elements on the page
     const allElements = Array.from(document.querySelectorAll('*:not(script):not(style):not(meta):not(link):not(title)'));
     
-    // Random selection - only half disappear (authentic to movie)
-    const selectedElements = allElements.filter(() => Math.random() < 0.5);
-    
-    // Create dust particles for selected elements
+    // Create dust particles across the entire page
     const particles: HTMLDivElement[] = [];
-    selectedElements.forEach((element) => {
-      const rect = element.getBoundingClientRect();
-      for (let i = 0; i < 8; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'fixed bg-emerald-400 rounded-full pointer-events-none z-[9999] opacity-70';
-        const size = Math.random() * 3 + 1;
-        particle.style.width = size + 'px';
-        particle.style.height = size + 'px';
-        particle.style.left = (rect.left + Math.random() * rect.width) + 'px';
-        particle.style.top = (rect.top + Math.random() * rect.height) + 'px';
-        document.body.appendChild(particle);
-        particles.push(particle);
-      }
-    });
+    for (let i = 0; i < 300; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'fixed bg-emerald-400 rounded-full pointer-events-none z-[9999] opacity-70';
+      const size = Math.random() * 4 + 1;
+      particle.style.width = size + 'px';
+      particle.style.height = size + 'px';
+      particle.style.left = Math.random() * window.innerWidth + 'px';
+      particle.style.top = Math.random() * window.innerHeight + 'px';
+      document.body.appendChild(particle);
+      particles.push(particle);
+    }
 
-    // Staggered disintegration animation
+    // Complete page disintegration
     gsap.timeline({
       onComplete: () => {
         particles.forEach(p => p.remove());
         window.open('https://gramtimevisuals.netlify.app', '_blank');
-        gsap.set(selectedElements, { opacity: 1, scale: 1 });
+        gsap.set(allElements, { opacity: 1, scale: 1 });
       }
     })
-    // Elements start fading with staggered timing (wave effect)
-    .to(selectedElements, {
-      opacity: 0.3,
-      scale: 0.95,
-      duration: 2.5,
-      stagger: {
-        amount: 4,
-        from: "random"
-      },
+    // All elements vanish together
+    .to(allElements, {
+      opacity: 0,
+      scale: 0.9,
+      duration: 1.5,
+      stagger: 0.005,
       ease: "power2.out"
     })
-    // Dust particles float away
+    // Dust particles scatter
     .to(particles, {
-      y: "-=100",
-      x: () => (Math.random() - 0.5) * 200,
+      y: () => (Math.random() - 0.5) * 800,
+      x: () => (Math.random() - 0.5) * 800,
       opacity: 0,
       scale: 0,
-      duration: 2.5,
-      stagger: 0.03,
-      ease: "power1.out"
-    }, "-=1")
-    // Final disappearance
-    .to(selectedElements, {
-      opacity: 0,
-      scale: 0.8,
-      duration: 3,
-      stagger: {
-        amount: 2.5,
-        from: "random"
-      },
-      ease: "power2.in"
-    }, "-=3");
+      rotation: () => Math.random() * 360,
+      duration: 2,
+      stagger: 0.003,
+      ease: "power2.out"
+    }, "-=1");
   };
 
   useEffect(() => {

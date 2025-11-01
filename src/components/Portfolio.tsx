@@ -11,7 +11,11 @@ import { CustomCursor } from "./CustomCursor";
 
 export function Portfolio() {
   useEffect(() => {
-    // Smooth scrolling only for Hero and AboutPage sections
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Only apply custom scrolling on desktop
+    if (isMobile) return;
+    
     let isScrolling = false;
     
     const smoothScroll = (e: WheelEvent) => {
@@ -33,7 +37,7 @@ export function Portfolio() {
         isScrolling = true;
         
         const delta = e.deltaY;
-        const scrollAmount = delta * 0.7; // Less slow than before
+        const scrollAmount = delta * 0.7;
         
         window.scrollBy({
           top: scrollAmount,
@@ -44,7 +48,6 @@ export function Portfolio() {
           isScrolling = false;
         }, 30);
       }
-      // Normal scrolling for other sections
     };
     
     window.addEventListener('wheel', smoothScroll, { passive: false });
@@ -54,9 +57,11 @@ export function Portfolio() {
     };
   }, []);
 
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
   return (
-    <div className="relative bg-black cursor-none" style={{ cursor: 'none' }}>
-      <CustomCursor />
+    <div className={`relative bg-black ${isMobile ? '' : 'cursor-none'}`} style={{ cursor: isMobile ? 'auto' : 'none' }}>
+      {!isMobile && <CustomCursor />}
 
       <Navigation />
       
