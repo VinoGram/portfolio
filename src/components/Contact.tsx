@@ -1,60 +1,55 @@
 import { useState, useEffect, useRef } from "react";
 import { gsap } from "gsap";
 
-function GameIcon({ src, index, allIcons }: { src: string; index: number; allIcons: React.RefObject<HTMLDivElement[]> }) {
-  const iconRef = useRef<HTMLImageElement>(null);
-  const [isShaking, setIsShaking] = useState(false);
+function GameIcon({ src, index, allIcons, globalShake }: { src: string; index: number; allIcons: React.RefObject<HTMLDivElement[]>; globalShake: boolean }) {
+  const iconRef = useRef<HTMLDivElement>(null);
+  const [velocity, setVelocity] = useState({ x: 0, y: 0 });
+  const [rotation, setRotation] = useState(Math.random() * 360);
 
   useEffect(() => {
     const icon = iconRef.current;
     if (!icon) return;
 
-    // Device motion detection for shake
-    let lastAcceleration = { x: 0, y: 0, z: 0 };
-    let shakeTimeout: NodeJS.Timeout;
-
-    const handleDeviceMotion = (event: DeviceMotionEvent) => {
-      if (!event.accelerationIncludingGravity) return;
-
-      const { x, y, z } = event.accelerationIncludingGravity;
-      const acceleration = Math.sqrt(x! * x! + y! * y! + z! * z!);
-      const lastAccel = Math.sqrt(
-        lastAcceleration.x * lastAcceleration.x +
-        lastAcceleration.y * lastAcceleration.y +
-        lastAcceleration.z * lastAcceleration.z
-      );
-
-      const delta = Math.abs(acceleration - lastAccel);
-
-      if (delta > 12) {
-        setIsShaking(true);
-        gsap.to(icon, {
-          x: `+=${Math.random() * 40 - 20}`,
-          y: `+=${Math.random() * 40 - 20}`,
-          rotation: `+=${Math.random() * 60 - 30}`,
-          duration: 0.1,
-          ease: "power2.out"
-        });
-        clearTimeout(shakeTimeout);
-        shakeTimeout = setTimeout(() => setIsShaking(false), 500);
-      }
-
-      lastAcceleration = { x: x || 0, y: y || 0, z: z || 0 };
-    };
-
-    if (typeof DeviceMotionEvent !== 'undefined') {
-      window.addEventListener('devicemotion', handleDeviceMotion);
-    }
-
-    // Set initial position
+    // Enhanced initial setup with space-like properties
+    const initialX = Math.random() * (window.innerWidth - 120);
+    const initialY = Math.random() * (window.innerHeight - 120);
+    const initialScale = 0.6 + Math.random() * 0.8;
+    const depth = Math.random();
+    
     gsap.set(icon, {
-      x: Math.random() * (window.innerWidth - 100),
-      y: Math.random() * (window.innerHeight - 100),
-      rotation: Math.random() * 360,
-      opacity: 0.3
+      x: initialX,
+      y: initialY,
+      rotation: rotation,
+      scale: initialScale,
+      opacity: 0.4 + depth * 0.4,
+      filter: `blur(${(1 - depth) * 2}px) brightness(${0.8 + depth * 0.4})`,
+      zIndex: Math.floor(depth * 10)
     });
 
-    // Collision detection
+    // Space-like floating with momentum
+    let currentVelocity = { x: (Math.random() - 0.5) * 0.5, y: (Math.random() - 0.5) * 0.5 };
+    
+    const spaceFloat = () => {
+      gsap.to(icon, {
+        x: `+=${currentVelocity.x * 100}`,
+        y: `+=${currentVelocity.y * 100}`,
+        rotation: `+=${currentVelocity.x * 20}`,
+        duration: 8 + Math.random() * 12,
+        ease: "none",
+        onComplete: () => {
+          // Gradual velocity change for realistic space physics
+          currentVelocity.x += (Math.random() - 0.5) * 0.2;
+          currentVelocity.y += (Math.random() - 0.5) * 0.2;
+          currentVelocity.x *= 0.98; // Space friction
+          currentVelocity.y *= 0.98;
+          spaceFloat();
+        }
+      });
+    };
+    
+    setTimeout(() => spaceFloat(), Math.random() * 3000);
+
+    // Enhanced collision detection with momentum transfer
     const checkCollisions = () => {
       if (!allIcons.current || !icon) return;
       
@@ -73,34 +68,22 @@ function GameIcon({ src, index, allIcons }: { src: string; index: number; allIco
           (iconCenterX - otherCenterX) ** 2 + (iconCenterY - otherCenterY) ** 2
         );
         
-        if (distance < 50) {
+        if (distance < 60) {
           const angle = Math.atan2(iconCenterY - otherCenterY, iconCenterX - otherCenterX);
+          const force = (60 - distance) * 2;
           
           gsap.to(icon, {
-            x: `+=${Math.cos(angle) * 60}`,
-            y: `+=${Math.sin(angle) * 60}`,
-            duration: 0.5,
-            ease: "power2.out"
+            x: `+=${Math.cos(angle) * force}`,
+            y: `+=${Math.sin(angle) * force}`,
+            rotation: `+=${Math.random() * 180 - 90}`,
+            duration: 3 + Math.random() * 2,
+            ease: "power1.out"
           });
         }
       });
     };
 
-    // Floating animation
-    gsap.to(icon, {
-      y: `+=${Math.random() * 150 - 75}`,
-      x: `+=${Math.random() * 150 - 75}`,
-      rotation: `+=${Math.random() * 90 - 45}`,
-      duration: 12 + Math.random() * 8,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut",
-      onUpdate: () => {
-        if (Math.random() > 0.95) checkCollisions();
-      }
-    });
-
-    // Mouse tracking
+    // Gentle mouse interaction
     const handleMouseMove = (e: MouseEvent) => {
       const rect = icon.getBoundingClientRect();
       const iconCenterX = rect.left + rect.width / 2;
@@ -109,30 +92,48 @@ function GameIcon({ src, index, allIcons }: { src: string; index: number; allIco
         Math.pow(e.clientX - iconCenterX, 2) + Math.pow(e.clientY - iconCenterY, 2)
       );
 
-      if (distance < 100) {
-        const newX = Math.random() * (window.innerWidth - 100);
-        const newY = Math.random() * (window.innerHeight - 100);
+      if (distance < 150) {
+        const angle = Math.atan2(iconCenterY - e.clientY, iconCenterX - e.clientX);
+        const force = (150 - distance) * 0.5;
         
         gsap.to(icon, {
-          x: newX,
-          y: newY,
-          duration: 2,
-          ease: "power2.out",
-          rotation: `+=${Math.random() * 180}`,
+          x: `+=${Math.cos(angle) * force}`,
+          y: `+=${Math.sin(angle) * force}`,
+          duration: 4,
+          ease: "power1.out",
+          rotation: `+=${Math.random() * 60 - 30}`,
         });
       }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
+    
+    // Periodic collision checks
+    const collisionInterval = setInterval(checkCollisions, 500);
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      if (typeof DeviceMotionEvent !== 'undefined') {
-        window.removeEventListener('devicemotion', handleDeviceMotion);
-      }
-      clearTimeout(shakeTimeout);
+      clearInterval(collisionInterval);
     };
   }, []);
+
+  // Global shake effect
+  useEffect(() => {
+    const icon = iconRef.current;
+    if (!icon || !globalShake) return;
+
+    gsap.to(icon, {
+      x: `+=${Math.random() * 80 - 40}`,
+      y: `+=${Math.random() * 80 - 40}`,
+      rotation: `+=${Math.random() * 120 - 60}`,
+      scale: `+=${Math.random() * 0.3 - 0.15}`,
+      duration: 0.8,
+      ease: "elastic.out(1, 0.3)"
+    });
+  }, [globalShake]);
+
+  const size = Math.random() > 0.6 ? 'w-12 h-12' : Math.random() > 0.3 ? 'w-10 h-10' : 'w-8 h-8';
+  const borderRadius = Math.random() > 0.4 ? 'rounded-2xl' : 'rounded-full';
 
   return (
     <div
@@ -140,14 +141,19 @@ function GameIcon({ src, index, allIcons }: { src: string; index: number; allIco
         iconRef.current = el;
         if (el && allIcons.current) allIcons.current[index] = el;
       }}
-      className={`absolute w-8 h-8 rounded-lg overflow-hidden border border-emerald-400/30 ${isShaking ? 'animate-device-shake' : ''}`}
+      className={`absolute ${size} ${borderRadius} overflow-hidden shadow-2xl border-2 border-emerald-400/20 backdrop-blur-sm bg-gradient-to-br from-black/60 via-emerald-950/30 to-black/40 hover:border-emerald-400/60 transition-all duration-700 hover:shadow-emerald-400/20 hover:shadow-lg`}
+      style={{
+        boxShadow: '0 0 20px rgba(16, 185, 129, 0.1), inset 0 0 20px rgba(16, 185, 129, 0.05)'
+      }}
     >
       <img
         src={src}
         alt="Programming Language"
-        className="w-full h-full object-cover opacity-70"
+        className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity duration-500 mix-blend-screen"
         onError={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }}
       />
+      <div className="absolute inset-0 bg-gradient-to-t from-emerald-400/10 via-transparent to-emerald-400/5 opacity-60"></div>
+      <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/20"></div>
     </div>
   );
 }
@@ -160,7 +166,47 @@ export function Contact() {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [globalShake, setGlobalShake] = useState(false);
   const allIconsRef = useRef<HTMLDivElement[]>([]);
+
+  // Global device motion detection
+  useEffect(() => {
+    let lastAcceleration = { x: 0, y: 0, z: 0 };
+    let shakeTimeout: NodeJS.Timeout;
+
+    const handleDeviceMotion = (event: DeviceMotionEvent) => {
+      if (!event.accelerationIncludingGravity) return;
+
+      const { x, y, z } = event.accelerationIncludingGravity;
+      const acceleration = Math.sqrt(x! * x! + y! * y! + z! * z!);
+      const lastAccel = Math.sqrt(
+        lastAcceleration.x * lastAcceleration.x +
+        lastAcceleration.y * lastAcceleration.y +
+        lastAcceleration.z * lastAcceleration.z
+      );
+
+      const delta = Math.abs(acceleration - lastAccel);
+
+      if (delta > 15) {
+        setGlobalShake(true);
+        clearTimeout(shakeTimeout);
+        shakeTimeout = setTimeout(() => setGlobalShake(false), 1000);
+      }
+
+      lastAcceleration = { x: x || 0, y: y || 0, z: z || 0 };
+    };
+
+    if (typeof DeviceMotionEvent !== 'undefined') {
+      window.addEventListener('devicemotion', handleDeviceMotion);
+    }
+
+    return () => {
+      if (typeof DeviceMotionEvent !== 'undefined') {
+        window.removeEventListener('devicemotion', handleDeviceMotion);
+      }
+      clearTimeout(shakeTimeout);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,8 +275,8 @@ export function Contact() {
           '/images/solidity.jpeg','/images/vue.jpeg','/images/flutter.jpeg',
           '/images/Bootstrap.jpeg', '/images/intellij.jpeg', '/images/vscode.jpeg',
           '/images/sql.jpeg','/images/figma.jpeg', '/images/nextjs.jpeg'
-        ].slice(0, 20).map((iconPath, index) => (
-          <GameIcon key={index} src={iconPath} index={index} allIcons={allIconsRef} />
+        ].slice(0, 25).map((iconPath, index) => (
+          <GameIcon key={index} src={iconPath} index={index} allIcons={allIconsRef} globalShake={globalShake} />
         ))}
       </div>
       
