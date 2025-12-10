@@ -85,12 +85,17 @@ export function Hero() {
         className="absolute inset-0 w-full h-full object-cover z-0 opacity-15"
         src="/videos/zoom-sequence.mp4"
         autoPlay
-        loop
+        loop={true}
         muted
         playsInline
-        preload="metadata"
-        controls={false}
         webkit-playsinline="true"
+        preload="auto"
+        controls={false}
+        onLoadedData={(e) => {
+          // Ensure video plays on mobile
+          const video = e.target as HTMLVideoElement;
+          video.play().catch(() => {});
+        }}
       />
 
       {/* Animated gradient background */}

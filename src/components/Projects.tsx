@@ -51,10 +51,10 @@ export function Projects() {
     {
       id: 6,
       title: " Echo App",
-      description: "Better Conversation For Couples",
+      description: "Go beyond what's for dinner?",
       category: "fullstack",
-      url: "https://google.com",
-      tech: ["Nest.js", "React"]
+      url: "https://echoo-three.vercel.app",
+      tech: ["Express.js", "React", "Python"]
     },
   ];
 

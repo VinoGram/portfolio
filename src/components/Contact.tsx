@@ -1,44 +1,106 @@
 import { useState, useEffect, useRef } from "react";
 import { gsap } from "gsap";
 
-function GameIcon({ src, index }: { src: string; index: number }) {
+function GameIcon({ src, index, allIcons }: { src: string; index: number; allIcons: React.RefObject<HTMLDivElement[]> }) {
   const iconRef = useRef<HTMLImageElement>(null);
+  const [isShaking, setIsShaking] = useState(false);
 
   useEffect(() => {
     const icon = iconRef.current;
     if (!icon) return;
 
-    // Set initial position at bottom of screen (underground)
+    // Device motion detection for shake
+    let lastAcceleration = { x: 0, y: 0, z: 0 };
+    let shakeTimeout: NodeJS.Timeout;
+
+    const handleDeviceMotion = (event: DeviceMotionEvent) => {
+      if (!event.accelerationIncludingGravity) return;
+
+      const { x, y, z } = event.accelerationIncludingGravity;
+      const acceleration = Math.sqrt(x! * x! + y! * y! + z! * z!);
+      const lastAccel = Math.sqrt(
+        lastAcceleration.x * lastAcceleration.x +
+        lastAcceleration.y * lastAcceleration.y +
+        lastAcceleration.z * lastAcceleration.z
+      );
+
+      const delta = Math.abs(acceleration - lastAccel);
+
+      if (delta > 12) {
+        setIsShaking(true);
+        gsap.to(icon, {
+          x: `+=${Math.random() * 40 - 20}`,
+          y: `+=${Math.random() * 40 - 20}`,
+          rotation: `+=${Math.random() * 60 - 30}`,
+          duration: 0.1,
+          ease: "power2.out"
+        });
+        clearTimeout(shakeTimeout);
+        shakeTimeout = setTimeout(() => setIsShaking(false), 500);
+      }
+
+      lastAcceleration = { x: x || 0, y: y || 0, z: z || 0 };
+    };
+
+    if (typeof DeviceMotionEvent !== 'undefined') {
+      window.addEventListener('devicemotion', handleDeviceMotion);
+    }
+
+    // Set initial position
     gsap.set(icon, {
       x: Math.random() * (window.innerWidth - 100),
-      y: window.innerHeight + 100, // Start below screen
+      y: Math.random() * (window.innerHeight - 100),
       rotation: Math.random() * 360,
-      opacity: 0
+      opacity: 0.3
     });
 
-    // Slowly emerge from ground
-    gsap.to(icon, {
-      y: Math.random() * (window.innerHeight - 200),
-      opacity: 0.7,
-      duration: 8 + Math.random() * 4,
-      delay: Math.random() * 6,
-      ease: "power2.out"
-    });
-
-    // Slow continuous floating after emerging
-    setTimeout(() => {
-      gsap.to(icon, {
-        y: `+=${Math.random() * 150 - 75}`,
-        x: `+=${Math.random() * 150 - 75}`,
-        rotation: `+=${Math.random() * 90 - 45}`,
-        duration: 12 + Math.random() * 8,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
+    // Collision detection
+    const checkCollisions = () => {
+      if (!allIcons.current || !icon) return;
+      
+      const iconRect = icon.getBoundingClientRect();
+      const iconCenterX = iconRect.left + iconRect.width / 2;
+      const iconCenterY = iconRect.top + iconRect.height / 2;
+      
+      allIcons.current.forEach((otherIcon, otherIndex) => {
+        if (otherIndex === index || !otherIcon) return;
+        
+        const otherRect = otherIcon.getBoundingClientRect();
+        const otherCenterX = otherRect.left + otherRect.width / 2;
+        const otherCenterY = otherRect.top + otherRect.height / 2;
+        
+        const distance = Math.sqrt(
+          (iconCenterX - otherCenterX) ** 2 + (iconCenterY - otherCenterY) ** 2
+        );
+        
+        if (distance < 50) {
+          const angle = Math.atan2(iconCenterY - otherCenterY, iconCenterX - otherCenterX);
+          
+          gsap.to(icon, {
+            x: `+=${Math.cos(angle) * 60}`,
+            y: `+=${Math.sin(angle) * 60}`,
+            duration: 0.5,
+            ease: "power2.out"
+          });
+        }
       });
-    }, (8 + Math.random() * 4) * 1000);
+    };
 
-    // Cursor hit detection - icons flee when cursor gets close
+    // Floating animation
+    gsap.to(icon, {
+      y: `+=${Math.random() * 150 - 75}`,
+      x: `+=${Math.random() * 150 - 75}`,
+      rotation: `+=${Math.random() * 90 - 45}`,
+      duration: 12 + Math.random() * 8,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut",
+      onUpdate: () => {
+        if (Math.random() > 0.95) checkCollisions();
+      }
+    });
+
+    // Mouse tracking
     const handleMouseMove = (e: MouseEvent) => {
       const rect = icon.getBoundingClientRect();
       const iconCenterX = rect.left + rect.width / 2;
@@ -47,7 +109,6 @@ function GameIcon({ src, index }: { src: string; index: number }) {
         Math.pow(e.clientX - iconCenterX, 2) + Math.pow(e.clientY - iconCenterY, 2)
       );
 
-      // If cursor is within 100px, make icon flee to new location
       if (distance < 100) {
         const newX = Math.random() * (window.innerWidth - 100);
         const newY = Math.random() * (window.innerHeight - 100);
@@ -55,11 +116,9 @@ function GameIcon({ src, index }: { src: string; index: number }) {
         gsap.to(icon, {
           x: newX,
           y: newY,
-          duration: 4.5,
-          ease: "sine.inOut",
+          duration: 2,
+          ease: "power2.out",
           rotation: `+=${Math.random() * 180}`,
-          scale: 1.1,
-          onComplete: () => gsap.to(icon, { scale: 1, duration: 1.5 })
         });
       }
     };
@@ -68,29 +127,27 @@ function GameIcon({ src, index }: { src: string; index: number }) {
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
+      if (typeof DeviceMotionEvent !== 'undefined') {
+        window.removeEventListener('devicemotion', handleDeviceMotion);
+      }
+      clearTimeout(shakeTimeout);
     };
   }, []);
 
-  const size = Math.random() > 0.5 ? 'w-14 h-14' : 'w-10 h-10';
-  const borderRadius = Math.random() > 0.3 ? 'rounded-3xl' : 'rounded-full';
-  const rotation = Math.random() * 360;
-  const scale = 0.8 + Math.random() * 0.4;
-
   return (
     <div
-      ref={iconRef}
-      className={`absolute ${size} ${borderRadius} overflow-hidden shadow-xl border-2 border-emerald-400/30 backdrop-blur-sm bg-gradient-to-br from-black/40 to-emerald-950/20 cursor-pointer select-none hover:border-emerald-400/60 transition-all duration-300`}
-      style={{
-        transform: `rotate(${rotation}deg) scale(${scale})`,
+      ref={(el) => {
+        iconRef.current = el;
+        if (el && allIcons.current) allIcons.current[index] = el;
       }}
+      className={`absolute w-8 h-8 rounded-lg overflow-hidden border border-emerald-400/30 ${isShaking ? 'animate-device-shake' : ''}`}
     >
       <img
         src={src}
         alt="Programming Language"
-        className="w-full h-full object-cover opacity-70 hover:opacity-90 transition-opacity duration-300"
+        className="w-full h-full object-cover opacity-70"
         onError={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-emerald-400/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
     </div>
   );
 }
@@ -103,6 +160,7 @@ export function Contact() {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const allIconsRef = useRef<HTMLDivElement[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +202,7 @@ export function Contact() {
   };
 
   return (
-    <section className="py-32 px-8 bg-zinc-950 relative overflow-hidden" id="contact">
+    <section className="py-16 md:py-32 px-4 md:px-8 bg-zinc-950 relative overflow-hidden" id="contact">
       {/* Grid pattern overlay */}
       <div className="absolute inset-0 opacity-20 z-0">
         <div className="absolute inset-0" style={{
@@ -156,25 +214,23 @@ export function Contact() {
         }}></div>
       </div>
       
-      {/* Interactive Game-like Floating Icons */}
-      <div className="absolute inset-0 z-0 block">
+      {/* Complex Interactive Floating Icons */}
+      <div className="absolute inset-0 z-0">
         {[
-          '/images/react.jpeg', '/images/javascript.jpeg', '/images/typescript.jpeg',
+          '/images/React.jpeg', '/images/js.jpeg', '/images/typescript.jpeg',
           '/images/nodejs.jpeg', '/images/python.jpeg', '/images/java.jpeg',
-          '/images/html.jpeg', '/images/css.jpeg', '/images/tailwind.jpeg',
-          '/images/mongodb.jpeg', '/images/mysql.jpeg', '/images/git.jpeg',
-          '/images/docker.jpeg', '/images/aws.jpeg', '/images/nextjs.jpeg',
-          '/images/vue.jpeg', '/images/angular.jpeg', '/images/php.jpeg',
-          '/images/cpp.jpeg', '/images/django.jpeg', '/images/android.jpeg',
-          '/images/firebase.jpeg', '/images/postgresql.jpeg', '/images/redis.jpeg',
-          '/images/graphql.jpeg', '/images/sass.jpeg', '/images/webpack.jpeg',
-          '/images/Unity 3d Engine.jpeg', '/images/c.jpeg', '/images/swift.jpeg',
-          '/images/Unreal Engine.jpeg', '/images/c#.jpeg', '/images/postman.jpeg',
-          '/images/flutter.jpeg', '/images/kotlin.jpeg', '/images/laravel.jpeg',
-          '/images/express.jpeg', '/images/nestjs.jpeg', '/images/vite.jpeg',
-          '/images/github.jpeg', '/images/gitlab.jpeg', '/images/figma.jpeg'
-        ].map((iconPath, index) => (
-          <GameIcon key={index} src={iconPath} index={index} />
+          '/images/html.jpeg', '/images/css.jpeg', '/images/c++.jpeg',
+          '/images/Mongodb.jpeg', '/images/mysql.jpeg', '/images/git.jpeg',
+          '/images/swift.jpeg', '/images/aws.jpeg', '/images/nestjs.jpeg',
+          '/images/Unity 3d Engine.jpeg', '/images/c.jpeg', '/images/php.jpeg',
+          '/images/Unreal Engine.jpeg', '/images/django.jpeg', '/images/ruby.jpeg',
+          '/images/firebase.jpeg', '/images/postgresql.jpeg', '/images/c#.jpeg',
+          '/images/posman.jpeg', '/images/android.jpeg', '/images/Docker.jpeg', 
+          '/images/solidity.jpeg','/images/vue.jpeg','/images/flutter.jpeg',
+          '/images/Bootstrap.jpeg', '/images/intellij.jpeg', '/images/vscode.jpeg',
+          '/images/sql.jpeg','/images/figma.jpeg', '/images/nextjs.jpeg'
+        ].slice(0, 20).map((iconPath, index) => (
+          <GameIcon key={index} src={iconPath} index={index} allIcons={allIconsRef} />
         ))}
       </div>
       
@@ -182,17 +238,17 @@ export function Contact() {
       <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-400/5 rounded-full blur-3xl"></div>
       
       <div className="max-w-6xl mx-auto relative z-10">
-        <div className="text-center mb-20">
-          <h2 className="text-6xl md:text-7xl font-light text-white mb-6">
+        <div className="text-center mb-12 md:mb-20">
+          <h2 className="text-4xl md:text-6xl lg:text-7xl font-light text-white mb-4 md:mb-6">
             Let's Work
             <span className="block text-emerald-400">Together</span>
           </h2>
-          <p className="text-xl text-gray-400 font-light leading-relaxed max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-400 font-light leading-relaxed max-w-2xl mx-auto px-4">
             Ready to bring your ideas to life? Let's discuss your project and create something amazing together.
           </p>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-12 mb-12 md:mb-20">
           <div className="group p-8 bg-black/30 border border-gray-800 rounded-lg hover:border-emerald-400/30 transition-all duration-300">
             <div className="w-12 h-12 bg-emerald-400/10 rounded-lg flex items-center justify-center mb-6 group-hover:bg-emerald-400/20 transition-colors">
               <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,39 +286,11 @@ export function Contact() {
           </div>
         </div>
         
-        <div className="mb-20">
-          <h3 className="text-3xl font-light text-white mb-12 text-center">What I Can Help With</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <a href="mailto:Promisevino@gmail.com?subject=Frontend Development Project&body=Hi, I'm interested in frontend development services." className="group flex items-center space-x-3 p-4 bg-black/20 rounded-lg border border-gray-800 hover:border-emerald-400/50 hover:bg-emerald-400/5 transition-all duration-300 cursor-pointer">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full flex-shrink-0 group-hover:scale-125 transition-transform"></div>
-              <span className="text-gray-300 font-light group-hover:text-emerald-400 transition-colors">Frontend Development (React, Next.js, TypeScript)</span>
-            </a>
-            <a href="mailto:Promisevino@gmail.com?subject=Backend Development Project&body=Hi, I'm interested in backend development services." className="group flex items-center space-x-3 p-4 bg-black/20 rounded-lg border border-gray-800 hover:border-emerald-400/50 hover:bg-emerald-400/5 transition-all duration-300 cursor-pointer">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full flex-shrink-0 group-hover:scale-125 transition-transform"></div>
-              <span className="text-gray-300 font-light group-hover:text-emerald-400 transition-colors">Backend Development (Node.js, APIs, Databases)</span>
-            </a>
-            <a href="mailto:Promisevino@gmail.com?subject=Full Stack Application Project&body=Hi, I'm interested in full stack application development." className="group flex items-center space-x-3 p-4 bg-black/20 rounded-lg border border-gray-800 hover:border-emerald-400/50 hover:bg-emerald-400/5 transition-all duration-300 cursor-pointer">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full flex-shrink-0 group-hover:scale-125 transition-transform"></div>
-              <span className="text-gray-300 font-light group-hover:text-emerald-400 transition-colors">Full Stack Applications</span>
-            </a>
-            <a href="mailto:Promisevino@gmail.com?subject=Performance Optimization Project&body=Hi, I need help with performance optimization." className="group flex items-center space-x-3 p-4 bg-black/20 rounded-lg border border-gray-800 hover:border-emerald-400/50 hover:bg-emerald-400/5 transition-all duration-300 cursor-pointer">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full flex-shrink-0 group-hover:scale-125 transition-transform"></div>
-              <span className="text-gray-300 font-light group-hover:text-emerald-400 transition-colors">Performance Optimization</span>
-            </a>
-            <a href="mailto:Promisevino@gmail.com?subject=Technical Consulting&body=Hi, I'm interested in technical consulting services." className="group flex items-center space-x-3 p-4 bg-black/20 rounded-lg border border-gray-800 hover:border-emerald-400/50 hover:bg-emerald-400/5 transition-all duration-300 cursor-pointer">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full flex-shrink-0 group-hover:scale-125 transition-transform"></div>
-              <span className="text-gray-300 font-light group-hover:text-emerald-400 transition-colors">Technical Consulting</span>
-            </a>
-            <a href="mailto:Promisevino@gmail.com?subject=UI/UX Design Project&body=Hi, I'm interested in UI/UX design services." className="group flex items-center space-x-3 p-4 bg-black/20 rounded-lg border border-gray-800 hover:border-emerald-400/50 hover:bg-emerald-400/5 transition-all duration-300 cursor-pointer">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full flex-shrink-0 group-hover:scale-125 transition-transform"></div>
-              <span className="text-gray-300 font-light group-hover:text-emerald-400 transition-colors">UI/UX Design</span>
-            </a>
-          </div>
-        </div>
+
         
         <div className="max-w-2xl mx-auto">
-          <div className="bg-black/40 p-8 md:p-12 rounded-2xl border border-gray-800 backdrop-blur-sm">
-            <h3 className="text-3xl font-light text-white mb-8 text-center">Get In Touch</h3>
+          <div className="bg-black/40 p-6 md:p-8 lg:p-12 rounded-2xl border border-gray-800 backdrop-blur-sm">
+            <h3 className="text-2xl md:text-3xl font-light text-white mb-6 md:mb-8 text-center">Get In Touch</h3>
             
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>

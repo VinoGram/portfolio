@@ -11,6 +11,7 @@ export function AboutPage() {
   const imageRef = useRef<HTMLDivElement>(null);
   const backgroundImageRef = useRef<HTMLDivElement>(null);
   const [scrollComplete, setScrollComplete] = useState(false);
+  const [horizontalComplete, setHorizontalComplete] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -23,43 +24,166 @@ export function AboutPage() {
     // Manual horizontal scroll control
     let currentSection = 0;
     const maxSections = 3;
+    let touchStartY = 0;
     
-    const handleWheel = (e: WheelEvent) => {
-      // Allow scrolling back to hero if at first section and scrolling up
-      if (currentSection === 0 && e.deltaY < 0) {
-        return; // Don't prevent default, allow normal scroll
-      }
-      
-      // Allow scrolling to next page if at last section and scrolling down
-      if (currentSection === maxSections - 1 && e.deltaY > 0) {
-        setScrollComplete(true);
-        return; // Don't prevent default, allow normal scroll
-      }
-      
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? 1 : -1;
-      const newSection = Math.max(0, Math.min(maxSections - 1, currentSection + delta));
-      
+    // Initialize at first section
+    gsap.set(sectionsRef.current, { xPercent: 0 });
+    
+    const navigateToSection = (newSection: number) => {
       if (newSection !== currentSection) {
         currentSection = newSection;
         gsap.to(sectionsRef.current, {
           xPercent: -100 * currentSection,
           duration: 4,
-          ease: "power2.out"
+          ease: "power2.out",
+          onComplete: () => {
+            // Mark horizontal journey as complete when reaching last section
+            if (currentSection === maxSections - 1) {
+              setHorizontalComplete(true);
+            }
+          }
         });
       }
     };
     
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      
+      // Allow scrolling back to hero if at first section and scrolling up
+      if (currentSection === 0 && e.deltaY < 0) {
+        const heroSection = document.getElementById('hero');
+        if (heroSection) {
+          heroSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        return;
+      }
+      
+      // Only allow scrolling to next page if horizontal journey is complete
+      if (currentSection === maxSections - 1 && e.deltaY > 0) {
+        if (horizontalComplete) {
+          setScrollComplete(true);
+          // Scroll to next section (About)
+          const aboutSection = document.getElementById('about');
+          if (aboutSection) {
+            aboutSection.scrollIntoView({ behavior: 'smooth' });
+          }
+          return;
+        } else {
+          // Block scrolling until horizontal journey is complete
+          return;
+        }
+      }
+      
+      // Bidirectional navigation: from last section up goes to first, from first down goes to last
+      if (currentSection === maxSections - 1 && e.deltaY < 0) {
+        navigateToSection(0);
+        return;
+      }
+      
+      if (currentSection === 0 && e.deltaY > 0) {
+        navigateToSection(maxSections - 1);
+        setHorizontalComplete(true);
+        return;
+      }
+      
+      const delta = e.deltaY > 0 ? 1 : -1;
+      const newSection = Math.max(0, Math.min(maxSections - 1, currentSection + delta));
+      navigateToSection(newSection);
+      
+      // Mark horizontal journey as complete when reaching last section
+      if (newSection === maxSections - 1) {
+        setHorizontalComplete(true);
+      }
+    };
+    
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+    };
+    
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaY = touchStartY - touchEndY;
+      
+      // Minimum swipe distance
+      if (Math.abs(deltaY) < 50) return;
+      
+      // Allow scrolling back to hero if at first section and swiping down
+      if (currentSection === 0 && deltaY < 0) {
+        const heroSection = document.getElementById('hero');
+        if (heroSection) {
+          heroSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        return;
+      }
+      
+      // Only allow scrolling to next page if horizontal journey is complete
+      if (currentSection === maxSections - 1 && deltaY > 0) {
+        if (horizontalComplete) {
+          setScrollComplete(true);
+          // Scroll to next section (About)
+          const aboutSection = document.getElementById('about');
+          if (aboutSection) {
+            aboutSection.scrollIntoView({ behavior: 'smooth' });
+          }
+          return;
+        } else {
+          // Block scrolling until horizontal journey is complete
+          return;
+        }
+      }
+      
+      // Bidirectional navigation: from last section down goes to first, from first up goes to last
+      if (currentSection === maxSections - 1 && deltaY < 0) {
+        e.preventDefault();
+        navigateToSection(0);
+        return;
+      }
+      
+      if (currentSection === 0 && deltaY > 0) {
+        e.preventDefault();
+        navigateToSection(maxSections - 1);
+        setHorizontalComplete(true);
+        return;
+      }
+      
+      e.preventDefault();
+      const delta = deltaY > 0 ? 1 : -1;
+      const newSection = Math.max(0, Math.min(maxSections - 1, currentSection + delta));
+      navigateToSection(newSection);
+      
+      // Mark horizontal journey as complete when reaching last section
+      if (newSection === maxSections - 1) {
+        setHorizontalComplete(true);
+      }
+    };
+    
     container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false });
 
     return () => {
       container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchend', handleTouchEnd);
     };
   }, []);
 
   return (
     <section className="h-screen overflow-hidden relative" id="about-page">
-      <div ref={containerRef} className="flex h-full relative z-10">
+      {/* Grid pattern overlay */}
+      <div className="absolute inset-0 opacity-20 z-0">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(rgba(16, 185, 129, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(16, 185, 129, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px'
+        }}></div>
+      </div>
+      
+      {/* Gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/10 via-transparent to-emerald-950/5 z-0"></div>
+      <div ref={containerRef} className="flex h-full relative z-20">
         {/* Section 1: About Me Title */}
         <div 
           ref={el => { if (el) sectionsRef.current[0] = el; }}

@@ -18,75 +18,7 @@ export function About() {
   const contentRef = useRef<HTMLDivElement>(null);
   const portfolioButtonRef = useRef<HTMLAnchorElement>(null);
 
-  const thanosVanish = (e: React.MouseEvent) => {
-    e.preventDefault();
-    
-    // Play snap sound
-    const playSnapSound = () => {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
-      
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
-    };
-    
-    playSnapSound();
-    
-    // Get ALL elements on the page
-    const allElements = Array.from(document.querySelectorAll('*:not(script):not(style):not(meta):not(link):not(title)'));
-    
-    // Create dust particles across the entire page
-    const particles: HTMLDivElement[] = [];
-    for (let i = 0; i < 300; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'fixed bg-emerald-400 rounded-full pointer-events-none z-[9999] opacity-70';
-      const size = Math.random() * 4 + 1;
-      particle.style.width = size + 'px';
-      particle.style.height = size + 'px';
-      particle.style.left = Math.random() * window.innerWidth + 'px';
-      particle.style.top = Math.random() * window.innerHeight + 'px';
-      document.body.appendChild(particle);
-      particles.push(particle);
-    }
 
-    // Complete page disintegration
-    gsap.timeline({
-      onComplete: () => {
-        particles.forEach(p => p.remove());
-        window.open('https://gramtimevisuals.netlify.app', '_blank');
-        gsap.set(allElements, { opacity: 1, scale: 1 });
-      }
-    })
-    // All elements vanish together
-    .to(allElements, {
-      opacity: 0,
-      scale: 0.9,
-      duration: 1.5,
-      stagger: 0.005,
-      ease: "power2.out"
-    })
-    // Dust particles scatter
-    .to(particles, {
-      y: () => (Math.random() - 0.5) * 800,
-      x: () => (Math.random() - 0.5) * 800,
-      opacity: 0,
-      scale: 0,
-      rotation: () => Math.random() * 360,
-      duration: 2,
-      stagger: 0.003,
-      ease: "power2.out"
-    }, "-=1");
-  };
 
   useEffect(() => {
     const animateStats = () => {
@@ -188,7 +120,7 @@ export function About() {
             href="https://gramtimevisuals.netlify.app" 
             target="_blank" 
             rel="noopener noreferrer"
-            onClick={thanosVanish}
+
             className="inline-flex items-center px-8 py-4 bg-emerald-400/10 border border-emerald-400/30 text-emerald-400 text-lg font-light rounded-lg hover:bg-emerald-400/20 hover:border-emerald-400/50 transition-all duration-300 group relative overflow-hidden cursor-pointer"
           >
             <svg className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

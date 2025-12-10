@@ -56,25 +56,11 @@ const caseStudies: CaseStudy[] = [
   }
 ];
 
-export function Services() {
+export function CaseStudies() {
   const [selectedCase, setSelectedCase] = useState<number | null>(null);
 
   return (
-    <section className="py-32 px-8 bg-zinc-950 relative" id="services">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-emerald-950/20 z-0"></div>
-      
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 opacity-20 z-0">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `
-            linear-gradient(rgba(16, 185, 129, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(16, 185, 129, 0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '50px 50px'
-        }}></div>
-      </div>
-      
+    <section className="py-32 px-8 bg-black relative overflow-hidden">
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-20">
           <h2 className="text-5xl md:text-6xl font-light text-white mb-6">
